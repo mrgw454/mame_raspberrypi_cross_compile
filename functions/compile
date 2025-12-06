@@ -7,9 +7,9 @@ unset LD_LIBRARY_PATH
 export QT_SELECT=5
 
 ## Find cross-compile tools
-GCCBIN=$( ls -1d ${DIR_BUILD}/x-tools/${DSTR}/bin/*-gcc )
-GPPBIN=$( ls -1d ${DIR_BUILD}/x-tools/${DSTR}/bin/*-g++ )
-ARBIN=$(  ls -1d ${DIR_BUILD}/x-tools/${DSTR}/bin/*-gnu-ar )
+GCCBIN=$( ls -1d ${DIR_BUILD}/x-tools/${DSTR}/bin/*-gcc | head -n1 )
+GPPBIN=$( ls -1d ${DIR_BUILD}/x-tools/${DSTR}/bin/*-g++ | head -n1 )
+ARBIN=$(  ls -1d ${DIR_BUILD}/x-tools/${DSTR}/bin/*-ar  | head -n1 )
 
 ## Set per-arch tools
 case ${APTARCH} in
