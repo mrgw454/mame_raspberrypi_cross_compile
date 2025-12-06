@@ -17,7 +17,7 @@ then
   CPUS=4
 fi
 
-if [ "${MEM}" -gt "30" ]
+if [ "${MEM}" -gt "29" ]
 then    
   CPUS=$(nproc)
 fi
