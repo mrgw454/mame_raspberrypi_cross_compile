@@ -23,21 +23,22 @@ This project supports building the following versions of MAME:
 
 ## Software versions supported
 
-This repo always aims to build the latest stable release of MAME on the latest stable release of Debian Linux . Currently that's Debian 12 Bookworm, released June 2023, with Debian 13 Trixie coming later in 2025. 
+This repo always aims to build the latest stable release of MAME on the latest stable release of Debian Linux. Currently that's Debian 13 Trixie, released August 2025. 
 
 Support for older releases of either will come down to what software was provided by those distros, and the build-time and run-time requirements of MAME. 
 
-At time of writing, Debian 11 Bullseye, Debian 12 Bookworm and Debian 13 Trixie environments all build and run the latest stable MAME. 
+At time of writing, Debian 13 Trixie and Debian 12 Bookworm environments build and run the latest stable MAME. Debian 11 Bullseye is in sunset and will be deprecated by this project over time. 
 
-Debian 10 Buster will only work with up to and including MAME 0.264 (released March 2024).  Versions after this introduced a minimum requirement of SDL 2.0.14 and GCC 10.3, which require substantial manual and unsupported modifications to Debian 10 Buster installs.  Additionally, Debian 10 Buster fell out of direct support from the Debian developers as of September 2022, and out of LTS support by volunteer security developers June 2024.  It is recommended that users upgrade to a more recent distro.  However, the legacy build tools for that system will remain in this repo for the time being, and will likely be removed when Debian 13 Trixie reaches stable release. 
+Debian 10 Buster will only work with up to and including MAME 0.264 (released March 2024).  Versions after this introduced a minimum requirement of SDL 2.0.14 and GCC 10.3, which require substantial manual and unsupported modifications to Debian 10 Buster installs.  Additionally, Debian 10 Buster fell out of direct support from the Debian developers as of September 2022, and out of LTS support by volunteer security developers June 2024.  It is recommended that users upgrade to a more recent distro.  However, the legacy build tools for that system will remain in this repo for the time being, and will likely be removed soon. 
 
 Non-Debian distros will very likely run these builds, as long as their internal software is the same or newer than the Debian versions specified.  For a list of the software versions needed, see [conf/list_ostools.txt](conf/list_ostools.txt). 
 
 ## Installation
 
 * Requires an "APT" based Linux distro, or APT/dpkg tools to exist in the system.
+* Requires GCC 14 and Python 3.12 (or older). GCC 15 and Python 3.13 (or newer) break a few ct-ng things. [pyenv](https://github.com/pyenv/pyenv) can help manage multiple versions of Python. 
 * This is tested and working on Ubuntu 24.04 LTS, but probably works on Debian/Mint/Pop_OS/etc.  Create an issue if you find one that doesn't. 
-* You can run this on non-Debian/Ubuntu distros if `apt` and `dpkg` tools are installed.  Tested and working on Arch Linux. 
+* You can run this on non-Debian/Ubuntu distros if `apt` and `dpkg` tools are installed.  Tested and working on Arch Linux (see the GCC15/Python3.13 notes, however). 
 * Clone the project:
 ```
 sudo apt install -y git
