@@ -74,6 +74,19 @@ fi
 confirm
 
 #############################################
+# 2b. If project folder exists but toolchain is missing → FULL BUILD
+#############################################
+TOOLCHAIN_GLOB="$PROJECT_DIR/build/x-tools/debian_${DEBIAN_RELEASE}_*/bin"
+
+if [ "$FULL_BUILD" -eq 0 ]; then
+    if ! ls $TOOLCHAIN_GLOB >/dev/null 2>&1; then
+        echo "Toolchain missing — switching to FULL BUILD mode."
+        FULL_BUILD=1
+        confirm
+    fi
+fi
+
+#############################################
 # If FULL BUILD → clone repo + run download + prepare
 #############################################
 if [ "$FULL_BUILD" -eq 1 ]; then
