@@ -58,14 +58,24 @@ echo "Using Python: $(python3 --version)"
 confirm
 
 #############################################
-# 2. Check if project folder exists
+# 2. Determine project directory
 #############################################
-PROJECT_DIR="$HOME/source/mame_raspberrypi_cross_compile"
+WRAPPER_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== Project Folder Check ==="
+if [ -f "$WRAPPER_DIR/mame-cross-compile.sh" ] && [ -d "$WRAPPER_DIR/functions" ]; then
+    PROJECT_DIR="$WRAPPER_DIR"
+    echo "Wrapper is inside the project directory."
+else
+    PROJECT_DIR="$HOME/source/mame_raspberrypi_cross_compile"
+    echo "Wrapper is outside the project directory."
+fi
+confirm
+
+#############################################
+# 3. Determine if full build is needed
+#############################################
 if [ ! -d "$PROJECT_DIR" ]; then
-    echo "Project folder NOT found."
-    echo "Performing FULL BUILD (clone + download + prepare + compile)."
+    echo "Project folder NOT found — FULL BUILD required (clone + download + prepare)."
     FULL_BUILD=1
 else
     echo "Project folder exists."
@@ -74,55 +84,61 @@ fi
 confirm
 
 #############################################
-# 2b. If project folder exists but toolchain is missing → FULL BUILD
+# 4. If project exists but toolchain missing → FULL BUILD (no clone)
 #############################################
 TOOLCHAIN_GLOB="$PROJECT_DIR/build/x-tools/debian_${DEBIAN_RELEASE}_*/bin"
 
 if [ "$FULL_BUILD" -eq 0 ]; then
     if ! ls $TOOLCHAIN_GLOB >/dev/null 2>&1; then
-        echo "Toolchain missing — switching to FULL BUILD mode."
-        FULL_BUILD=1
+        echo "Toolchain missing — FULL BUILD required (no clone)."
+        FULL_BUILD=2
         confirm
     fi
 fi
 
 #############################################
-# If FULL BUILD → clone repo + run download + prepare
+# 5. Clone repo if FULL_BUILD=1
 #############################################
 if [ "$FULL_BUILD" -eq 1 ]; then
     echo "=== Cloning Project Repository ==="
     mkdir -p "$HOME/source"
     cd "$HOME/source"
 
-    if [ ! -d mame_raspberrypi_cross_compile ]; then
-        git clone https://github.com/mrgw454/mame_raspberrypi_cross_compile
-    else
+    if [ -d mame_raspberrypi_cross_compile ]; then
         echo "ERROR: Unexpected existing folder. Aborting to avoid contamination."
         exit 1
     fi
 
-    cd mame_raspberrypi_cross_compile
+    git clone https://github.com/mrgw454/mame_raspberrypi_cross_compile
+    PROJECT_DIR="$HOME/source/mame_raspberrypi_cross_compile"
+    cd "$PROJECT_DIR"
 
     echo "=== Running FULL BUILD Steps ==="
-    echo "Step 1: Download"
     ./mame-cross-compile.sh -o download -r "$DEBIAN_RELEASE" -a arm64
     confirm
-
-    echo "Step 2: Prepare (clean environment for ct-ng)"
-    unset CC CXX LD AR AS STRIP RANLIB OBJCOPY OBJDUMP NM CROSS_COMPILE
     ./mame-cross-compile.sh -o prepare -r "$DEBIAN_RELEASE" -a arm64
     confirm
-
-    echo "Project folder created. Proceeding to compile."
 fi
 
 #############################################
-# 3. Move into project folder
+# 6. FULL_BUILD=2 → run download + prepare (no clone)
+#############################################
+if [ "$FULL_BUILD" -eq 2 ]; then
+    echo "=== Running FULL BUILD Steps (no clone) ==="
+    cd "$PROJECT_DIR"
+    ./mame-cross-compile.sh -o download -r "$DEBIAN_RELEASE" -a arm64
+    confirm
+    ./mame-cross-compile.sh -o prepare -r "$DEBIAN_RELEASE" -a arm64
+    confirm
+fi
+
+#############################################
+# 7. Move into project folder
 #############################################
 cd "$PROJECT_DIR"
 
 #############################################
-# 4. Environment hygiene (for compile phase)
+# 8. Environment hygiene (for compile phase)
 #############################################
 echo "=== Environment Hygiene Check ==="
 VARS=(
@@ -141,41 +157,39 @@ echo "Environment is clean."
 confirm
 
 #############################################
-# 5. Verify toolchain (only if reusing)
+# 9. Verify toolchain
 #############################################
-if [ "$FULL_BUILD" -eq 0 ]; then
-    echo "=== Toolchain Verification ==="
-    TOOLCHAIN_DIR=$(echo build/x-tools/debian_${DEBIAN_RELEASE}_*/bin)
+echo "=== Toolchain Verification ==="
+TOOLCHAIN_DIR=$(echo build/x-tools/debian_${DEBIAN_RELEASE}_*/bin)
 
-    if [ ! -d $TOOLCHAIN_DIR ]; then
-        echo "ERROR: Toolchain directory missing."
-        exit 1
-    fi
-
-    echo "Toolchain directory: $TOOLCHAIN_DIR"
-    echo
-
-    REQUIRED_TOOLS=(
-        aarch64-rpi4-linux-gnu-gcc
-        aarch64-rpi4-linux-gnu-g++
-        aarch64-rpi4-linux-gnu-ar
-        aarch64-rpi4-linux-gnu-ld
-        aarch64-rpi4-linux-gnu-ld.gold
-        aarch64-rpi4-linux-gnu-strip
-    )
-
-    for TOOL in "${REQUIRED_TOOLS[@]}"; do
-        if [ ! -x "$TOOLCHAIN_DIR/$TOOL" ]; then
-            echo "ERROR: Missing toolchain binary: $TOOL"
-            exit 1
-        fi
-        echo "OK: $TOOL"
-    done
-    confirm
+if [ ! -d $TOOLCHAIN_DIR ]; then
+    echo "ERROR: Toolchain directory missing."
+    exit 1
 fi
 
+echo "Toolchain directory: $TOOLCHAIN_DIR"
+echo
+
+REQUIRED_TOOLS=(
+    aarch64-rpi4-linux-gnu-gcc
+    aarch64-rpi4-linux-gnu-g++
+    aarch64-rpi4-linux-gnu-ar
+    aarch64-rpi4-linux-gnu-ld
+    aarch64-rpi4-linux-gnu-ld.gold
+    aarch64-rpi4-linux-gnu-strip
+)
+
+for TOOL in "${REQUIRED_TOOLS[@]}"; do
+    if [ ! -x "$TOOLCHAIN_DIR/$TOOL" ]; then
+        echo "ERROR: Missing toolchain binary: $TOOL"
+        exit 1
+    fi
+    echo "OK: $TOOL"
+done
+confirm
+
 #############################################
-# 6. Verify sysroot
+# 10. Verify sysroot
 #############################################
 echo "=== Sysroot Verification ==="
 
@@ -202,7 +216,7 @@ echo "Sysroot verified."
 confirm
 
 #############################################
-# 7. Clean previous MAME build artifacts
+# 11. Clean previous MAME build artifacts
 #############################################
 echo "=== Cleaning MAME Build Artifacts ==="
 rm -rf build/src/mame
@@ -212,7 +226,7 @@ echo "MAME artifacts cleaned."
 confirm
 
 #############################################
-# 8. Define SOURCES (your single source of truth)
+# 12. Define SOURCES
 #############################################
 echo "=== Defining MAME SOURCES ==="
 
@@ -223,7 +237,7 @@ echo "$SOURCES"
 confirm
 
 #############################################
-# 9. Build MAME using project scripts
+# 13. Build MAME
 #############################################
 echo "=== Running Project Compile Step ==="
 echo "Command: ./mame-cross-compile.sh -o compile -r $DEBIAN_RELEASE -a arm64"
@@ -244,7 +258,7 @@ if [ $COMPILE_STATUS -ne 0 ]; then
 fi
 
 #############################################
-# 10. Validate output
+# 14. Validate output
 #############################################
 echo "=== Validating Build Output ==="
 
