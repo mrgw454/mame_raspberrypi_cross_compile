@@ -118,65 +118,73 @@ echo "ar  : ${ARBIN}"
 
 make clean
 
-make \
- REGENIE=1 \
- CROSS_BUILD=1 \
- TOOLS=1 \
- NOWERROR=1 \
- PLATFORM=${MAMEPLATFORM} \
- CFLAGS+=" -I ${MLIB}/usr/include" \
- CFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
- CFLAGS+=" -L ${MLIB}/usr/lib" \
- CFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
- CFLAGS+=" -U_FORTIFY_SOURCE" \
- CFLAGS+=" ${CUSTOMCFLAGS}" \
- CPPFLAGS+=" -I ${MLIB}/usr/include" \
- CPPFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
- CPPFLAGS+=" -L ${MLIB}/usr/lib" \
- CPPFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
- CPPFLAGS+=" -U_FORTIFY_SOURCE" \
- CPPFLAGS+=" ${CUSTOMCFLAGS}" \
- LDFLAGS+=" -L ${MLIB}/usr/lib" \
- LDFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
- LDFLAGS+=" ${CUSTOMLDFLAGS}" \
- ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib" \
- ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib/${LINARCH}" \
- ARCHOPTS+=" -Wl,-R,${MLIB}/lib" \
- ARCHOPTS+=" -Wl,-R,${MLIB}/lib/${LINARCH}" \
- ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
- ARCHOPTS+=" -Wl,-R,${MLIB}/opt/vc/lib" \
- ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib" \
- ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib/${LINARCH}" \
- ARCHOPTS+=" -Wl,-rpath,${MLIB}/lib" \
- ARCHOPTS+=" -Wl,-rpath,${MLIB}/lib/${LINARCH}" \
- ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
- ARCHOPTS+=" -Wl,-rpath,${MLIB}/opt/vc/lib" \
- ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib" \
- ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}" \
- ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/lib" \
- ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/lib/${LINARCH}" \
- ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
- ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/opt/vc/lib" \
- TARGETOS=linux \
- OVERRIDE_CC="${GCCBIN}" \
- OVERRIDE_LD="${LDBIN}" \
- OVERRIDE_CXX="${GPPBIN}" \
- OVERRIDE_AR="${ARBIN}" \
- -j${CPUS}
+  # 1) Build host tools (genie) with host compiler
+  make \
+    REGENIE=1 \
+    TOOLS=1 \
+    NOWERROR=1 \
+    PLATFORM=${MAMEPLATFORM} \
+    TARGETOS=linux \
+    -j${CPUS}
 
+  # 2) Build MAME for target with cross toolchain
+  make \
+    CROSS_BUILD=1 \
+    TOOLS=1 \
+    NOWERROR=1 \
+    SOURCES=trs/coco12.cpp,trs/coco3.cpp,trs/dragon.cpp,trs/mc10.cpp,atari/atari400.cpp,ti/ti99_4x.cpp,nintendo/dkong.cpp,commodore/c64.cpp,commodore/c128.cpp,msx/msx.cpp,sinclair/spectrum.cpp,trs/trs80.cpp,trs/trs80dt1.cpp,trs/trs80m2.cpp,trs/trs80m3.cpp,coleco/adam.cpp,coleco/coleco.cpp,apple/apple1.cpp,apple/apple2.cpp,apple/apple2e.cpp,apple/apple2gs.cpp,apple/apple3.cpp,trs/agvision.cpp,misc/nabupc.cpp,sharp/x68k.cpp,mattel/aquarius.cpp,mattel/aquarius_v.cpp,heathzenith/h19.cpp,tektronix/tek405x.cpp \
+    PLATFORM=${MAMEPLATFORM} \
+    CFLAGS+=" -I ${MLIB}/usr/include" \
+    CFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
+    CFLAGS+=" -L ${MLIB}/usr/lib" \
+    CFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
+    CFLAGS+=" -U_FORTIFY_SOURCE" \
+    CFLAGS+=" ${CUSTOMCFLAGS}" \
+    CPPFLAGS+=" -I ${MLIB}/usr/include" \
+    CPPFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
+    CPPFLAGS+=" -L ${MLIB}/usr/lib" \
+    CPPFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
+    CPPFLAGS+=" -U_FORTIFY_SOURCE" \
+    CPPFLAGS+=" ${CUSTOMCFLAGS}" \
+    LDFLAGS+=" -L ${MLIB}/usr/lib" \
+    LDFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
+    LDFLAGS+=" ${CUSTOMLDFLAGS}" \
+    ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib" \
+    ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib/${LINARCH}" \
+    ARCHOPTS+=" -Wl,-R,${MLIB}/lib" \
+    ARCHOPTS+=" -Wl,-R,${MLIB}/lib/${LINARCH}" \
+    ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
+    ARCHOPTS+=" -Wl,-R,${MLIB}/opt/vc/lib" \
+    ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib" \
+    ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib/${LINARCH}" \
+    ARCHOPTS+=" -Wl,-rpath,${MLIB}/lib" \
+    ARCHOPTS+=" -Wl,-rpath,${MLIB}/lib/${LINARCH}" \
+    ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
+    ARCHOPTS+=" -Wl,-rpath,${MLIB}/opt/vc/lib" \
+    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib" \
+    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}" \
+    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/lib" \
+    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/lib/${LINARCH}" \
+    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
+    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/opt/vc/lib" \
+    TARGETOS=linux \
+    OVERRIDE_CC="${GCCBIN}" \
+    OVERRIDE_CXX="${GPPBIN}" \
+    OVERRIDE_AR="${ARBIN}" \
+    -j${CPUS}
 
-if [ "$?" ]
-then
-  echo "Compile successful"
-  echo "Compressing to ${DIR_BUILD}/output/${OUTFILE}"
-  source "${DIR_FUNC}/compress"
-  compress
-  echo "All done." 
-else
+MAKE_STATUS=$?
+if [ $MAKE_STATUS -ne 0 ]; then
   echo "Compile failed"
   echo "Check the contents of the log file:"
   echo "${DIR_BUILD}/log/${OPERATION}_${DSTR}.log"
   exit 1
+else
+  echo "Compile successful"
+  echo "Compressing to ${DIR_BUILD}/output/${OUTFILE}"
+  source "${DIR_FUNC}/compress"
+  compress
+  echo "All done."
 fi
 
 }
