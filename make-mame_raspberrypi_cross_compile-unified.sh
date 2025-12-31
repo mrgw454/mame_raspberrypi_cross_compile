@@ -160,10 +160,10 @@ confirm
 # 9. Verify toolchain
 #############################################
 echo "=== Toolchain Verification ==="
-TOOLCHAIN_DIR=$(echo build/x-tools/debian_${DEBIAN_RELEASE}_*/bin)
+TOOLCHAIN_DIR="build/x-tools/debian_${DEBIAN_RELEASE}_trixie_arm64/bin"
 
-if [ ! -d $TOOLCHAIN_DIR ]; then
-    echo "ERROR: Toolchain directory missing."
+if [ ! -d "$TOOLCHAIN_DIR" ]; then
+    echo "ERROR: Toolchain directory missing: $TOOLCHAIN_DIR"
     exit 1
 fi
 
@@ -193,8 +193,7 @@ confirm
 #############################################
 echo "=== Sysroot Verification ==="
 
-TOOLCHAIN_DIR="build/x-tools/debian_${DEBIAN_RELEASE}_trixie_arm64"
-SYSROOT="$TOOLCHAIN_DIR/aarch64-rpi4-linux-gnu/sysroot"
+SYSROOT="build/x-tools/debian_${DEBIAN_RELEASE}_trixie_arm64/aarch64-rpi4-linux-gnu/sysroot"
 
 if [ ! -d "$SYSROOT" ]; then
     echo "ERROR: sysroot not found at: $SYSROOT"
@@ -237,17 +236,27 @@ echo "$SOURCES"
 confirm
 
 #############################################
-# 13. Build MAME
+# 13. Build MAME (ARM64 forced)
 #############################################
 echo "=== Running Project Compile Step ==="
 echo "Command: ./mame-cross-compile.sh -o compile -r $DEBIAN_RELEASE -a arm64"
 confirm
 
+# Prepend toolchain to PATH
+export PATH="$PROJECT_DIR/build/x-tools/debian_${DEBIAN_RELEASE}_trixie_arm64/bin:$PATH"
+
+# Force cross-compile
+export CROSS_BUILD=1
+export OVERRIDE_CC=aarch64-rpi4-linux-gnu-gcc
+export OVERRIDE_CXX=aarch64-rpi4-linux-gnu-g++
+export OVERRIDE_LD=aarch64-rpi4-linux-gnu-ld
+export OVERRIDE_AR=aarch64-rpi4-linux-gnu-ar
+export OVERRIDE_STRIP=aarch64-rpi4-linux-gnu-strip
+
+# Host tools
 export HOSTCC=gcc
 export HOSTCXX=g++
 export HOSTLD=ld
-
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:$PATH
 
 ./mame-cross-compile.sh -o compile -r "$DEBIAN_RELEASE" -a arm64
 COMPILE_STATUS=$?
@@ -275,4 +284,25 @@ echo "Output archives:"
 ls -l build/output || true
 echo
 
+#############################################
+# 15. Verify MAME binary architecture
+#############################################
+echo "=== Verifying MAME Binary Architecture ==="
+
+MAME_BIN="$PROJECT_DIR/build/src/mame/mame"
+
+ARCH_INFO=$(file "$MAME_BIN")
+echo "Binary reports: $ARCH_INFO"
+
+if echo "$ARCH_INFO" | grep -qi "aarch64"; then
+    echo "SUCCESS: MAME binary is ARM64 (aarch64)."
+else
+    echo "ERROR: MAME binary is NOT ARM64!"
+    echo "This indicates the build system fell back to native x86_64."
+    echo "Aborting to prevent packaging or distributing an incorrect binary."
+    exit 1
+fi
+
+echo "Architecture verification complete."
+echo
 echo "=== Build Complete ==="
