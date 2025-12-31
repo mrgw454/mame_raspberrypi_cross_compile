@@ -11,7 +11,10 @@ Compiling MAME directly on a Raspberry Pi can be slow and memory‑intensive. Th
 
 # Fixes and Improvements in This Fork (mrgw454)
 
-This fork includes a series of **critical corrections** and **build‑system improvements** required to successfully cross‑compile MAME for ARM64 on Debian 13.
+This fork includes a series of **critical corrections** and **build‑system improvements** required to successfully cross‑compile MAME for ARM64 on Debian 13 for use with the CoCo-Pi Project.
+[CoCo-Pi project](https://github.com/mrgw454/CoCo-Pi-Installer/tree/debian13)
+
+HUGE thank you to Dan Mons for his project.  He has saved me countless hours of compiling MAME for the Raspberry Pi.
 
 These fixes were developed through forensic troubleshooting and have been **verified only on Debian 13 (Trixie)**.  
 Other distributions may work but are not currently supported.
