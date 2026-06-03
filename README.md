@@ -85,12 +85,20 @@ debian_13_trixie_arm64_qt6
 
 That environment keeps the Qt6 sysroot, toolchain outputs, and logs isolated from the older default path.
 
-The Qt6 flow is designed for two practical workflows:
+The Qt6 flow is designed around the two practical workflows used on this machine:
 
-- full clean setup of download + prepare + compile
-- reuse of existing prerequisites with only a fresh MAME source/build
+- rebuild everything from scratch for the Qt6 environment
+- reuse the existing Qt6 tool environment and only refresh/build MAME
 
 Internally, `functions/compile` now detects whether the target sysroot contains Qt5 or Qt6 and rewrites MAME's generated Qt makefiles to use the target sysroot libraries instead of host Qt library paths.
+
+This Qt6 path has been verified to complete a full `download` + `prepare` + `compile` run for MAME `0.288` on Debian 13 `x86_64`, producing:
+
+```bash
+build/output/mame_0.288_debian_13_trixie_arm64_qt6.7z
+```
+
+The wrapper script is intended to live both in this repo and as a convenience copy in `$HOME/source-other/`.
 
 ---
 
@@ -102,17 +110,35 @@ To perform a full build on a clean system:
 ./make-mame_raspberrypi_cross_compile-unified.sh
 ```
 
-To build with the new Qt6 path:
+To build with the new Qt6 path in automatic mode:
 
 ```bash
 ./make-mame_raspberrypi_cross_compile-unified-qt6.sh
 ```
 
+To force a fresh Qt6 environment rebuild from scratch:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh --fresh
+```
+
+To reuse the existing Qt6 tool environment and only rebuild MAME:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh --reuse
+```
+
+To run without confirmation pauses:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh --reuse --yes
+```
+
 The script will:
 
-1. Clone the project (if missing)  
-2. Download and build the toolchain  
-3. Prepare the sysroot  
+1. Clone the project if needed for a fresh build
+2. Optionally rebuild the Qt6 `download` + `prepare` environment
+3. Reuse or rebuild the Qt6 toolchain and sysroot as requested
 4. Build host tools  
 5. Build MAME for ARM64  
 6. Package the output  
@@ -211,6 +237,12 @@ MAME_DSTR_SUFFIX=qt6 ./mame-cross-compile.sh -o download -r 13 -a arm64
 MAME_DSTR_SUFFIX=qt6 ./mame-cross-compile.sh -o prepare -r 13 -a arm64
 MAME_DSTR_SUFFIX=qt6 ./mame-cross-compile.sh -o compile -r 13 -a arm64
 ```
+
+The Qt6 wrapper above is the preferred entrypoint because it handles:
+
+- `--fresh` for a clean Qt6 tool environment rebuild
+- `--reuse` for new MAME builds against the existing Qt6 environment
+- `--auto` to reuse when possible and bootstrap when missing
 
 Output appears in:
 

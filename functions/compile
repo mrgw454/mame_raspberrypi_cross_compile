@@ -88,7 +88,7 @@ rewrite_qt_makefiles() {
   echo "Rewriting generated MAME makefiles to use Qt${QT_MAJOR} from ${MLIB}"
 
   QT_CFLAGS="${QT_CFLAGS}" perl -0pi -e 's@ -I\$\(shell qmake(?:6)? -query QT_INSTALL_HEADERS\)@$ENV{QT_CFLAGS}@g' "${QTMAKE}/qtdbg_sdl.make"
-  QT_MOC="${QT_MOC}" perl -0pi -e 's@/usr/lib/qt6/libexec/moc|/usr/lib/qt5/bin/moc|moc-qt5|moc@$ENV{QT_MOC}@g' "${QTMAKE}/qtdbg_sdl.make"
+  QT_MOC="${QT_MOC}" perl -0pi -e 's@\$\((?:SILENT)\)\s+(?:/usr/lib/qt6/libexec/moc|/usr/lib/qt5/bin/moc|moc-qt5|moc)(?=\$\(MOCINCPATH\))@\$(SILENT) $ENV{QT_MOC}@g' "${QTMAKE}/qtdbg_sdl.make"
   perl -0pi -e 's@ -L\$\(shell qmake(?:6)? -query QT_INSTALL_LIBS\)@@g' "${QTMAKE}/qtdbg_sdl.make" "${QTMAKE}/mame.make"
   QT_LIBS="${QT_LIBS}" perl -0pi -e 's@ -lQt[56]Core -lQt[56]Gui -lQt[56]Widgets@ $ENV{QT_LIBS}@g' "${QTMAKE}/mame.make"
 
