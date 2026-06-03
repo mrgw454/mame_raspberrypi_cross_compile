@@ -19,6 +19,9 @@ HUGE thank you to Dan Mons for his project.  He has saved me countless hours of 
 These fixes were developed through forensic troubleshooting and have been **verified only on Debian 13 (Trixie)**.  
 Other distributions may work but are not currently supported.
 
+This repository is the supported place for local Raspberry Pi cross-build changes.
+The original upstream project should be treated as read-only for these fork-specific fixes.
+
 ## Summary of Fixes
 
 - **Corrected two‑stage build process**  
@@ -65,12 +68,44 @@ The wrapper script **defines the SOURCES list** for the MAME build.
 
 ---
 
+# Qt6 Wrapper Script
+
+Current upstream MAME expects a Qt6-based Linux debugger build path.
+To keep the existing Qt5-oriented environment intact while supporting new MAME builds for Raspberry Pi, this fork now includes a parallel Qt6 wrapper:
+
+```bash
+make-mame_raspberrypi_cross_compile-unified-qt6.sh
+```
+
+This wrapper uses a separate environment name:
+
+```bash
+debian_13_trixie_arm64_qt6
+```
+
+That environment keeps the Qt6 sysroot, toolchain outputs, and logs isolated from the older default path.
+
+The Qt6 flow is designed for two practical workflows:
+
+- full clean setup of download + prepare + compile
+- reuse of existing prerequisites with only a fresh MAME source/build
+
+Internally, `functions/compile` now detects whether the target sysroot contains Qt5 or Qt6 and rewrites MAME's generated Qt makefiles to use the target sysroot libraries instead of host Qt library paths.
+
+---
+
 # Usage
 
 To perform a full build on a clean system:
 
 ```bash
 ./make-mame_raspberrypi_cross_compile-unified.sh
+```
+
+To build with the new Qt6 path:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh
 ```
 
 The script will:
@@ -169,6 +204,14 @@ See the original README for full argument details.
 ./mame-cross-compile.sh -o compile -r 13 -a arm64
 ```
 
+Qt6 environment example:
+
+```bash
+MAME_DSTR_SUFFIX=qt6 ./mame-cross-compile.sh -o download -r 13 -a arm64
+MAME_DSTR_SUFFIX=qt6 ./mame-cross-compile.sh -o prepare -r 13 -a arm64
+MAME_DSTR_SUFFIX=qt6 ./mame-cross-compile.sh -o compile -r 13 -a arm64
+```
+
 Output appears in:
 
 ```
@@ -184,7 +227,7 @@ Copy the `.7z` archive to your ARM64 system, extract, and run.
 You may need:
 
 ```bash
-sudo apt install -y libfreetype6 libsdl2-ttf-2.0-0 libsdl2-2.0-0 libqt5widgets5 libqt5gui5 libgl1
+sudo apt install -y libfreetype6 libsdl2-ttf-2.0-0 libsdl2-2.0-0 libqt6widgets6 libqt6gui6 libgl1
 ```
 
 ---

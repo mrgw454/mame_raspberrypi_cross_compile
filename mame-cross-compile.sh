@@ -182,7 +182,17 @@ then
   CTNGVER="master"
 fi
 
-DSTR="debian_${DEBVER}_${DEBREL}_${APTARCH}"
+if [ -n "${MAME_DSTR_SUFFIX:-}" ]
+then
+  if [[ ! "${MAME_DSTR_SUFFIX}" =~ ^[A-Za-z0-9_]+$ ]]
+  then
+    echo "Invalid environment suffix in MAME_DSTR_SUFFIX: ${MAME_DSTR_SUFFIX}"
+    exit 1
+  fi
+  DSTR="debian_${DEBVER}_${DEBREL}_${APTARCH}_${MAME_DSTR_SUFFIX}"
+else
+  DSTR="debian_${DEBVER}_${DEBREL}_${APTARCH}"
+fi
 
 source "${DIR_FUNC}/${OPERATION}"
 
