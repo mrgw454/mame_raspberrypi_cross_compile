@@ -78,14 +78,24 @@ resolve_qt_settings() {
 rewrite_qt_makefiles() {
   QTMAKE="${DIR_BUILD}/src/${MAMEFORK}/build/projects/sdl/mame/gmake-linux"
   QT_PATTERN="Qt${QT_MAJOR}Core|Qt${QT_MAJOR}Gui|Qt${QT_MAJOR}Widgets"
+  GENERATED_FILES=$(find "${QTMAKE}" -maxdepth 1 \( -name '*.make' -o -name 'Makefile' \) -print)
 
-  if [ ! -f "${QTMAKE}/qtdbg_sdl.make" ] || [ ! -f "${QTMAKE}/mame.make" ]
+  if [ -z "${GENERATED_FILES}" ] || [ ! -f "${QTMAKE}/qtdbg_sdl.make" ] || [ ! -f "${QTMAKE}/mame.make" ]
   then
     echo "ERROR: Expected generated Qt makefiles were not found in ${QTMAKE}"
     exit 1
   fi
 
-  echo "Rewriting generated MAME makefiles to use Qt${QT_MAJOR} from ${MLIB}"
+  echo "Rewriting generated MAME makefiles for cross-toolchain and Qt${QT_MAJOR} from ${MLIB}"
+
+  GCCBIN="${GCCBIN}" GPPBIN="${GPPBIN}" ARBIN="${ARBIN}" perl -0pi -e '
+    s@^CC  = gcc$@CC  = $ENV{GCCBIN}@mg;
+    s@^CXX = g\+\+$@CXX = $ENV{GPPBIN}@mg;
+    s@^AR  = ar$@AR  = $ENV{ARBIN}@mg;
+    s@(?:^| )-m32(?= |$)@@mg;
+    s@(?:^| )-m64(?= |$)@@mg;
+    s@[ ]{2,}@ @mg;
+  ' ${GENERATED_FILES}
 
   QT_CFLAGS="${QT_CFLAGS}" perl -0pi -e 's@ -I\$\(shell qmake(?:6)? -query QT_INSTALL_HEADERS\)@$ENV{QT_CFLAGS}@g' "${QTMAKE}/qtdbg_sdl.make"
   QT_MOC="${QT_MOC}" perl -0pi -e 's@\$\((?:SILENT)\)\s+(?:/usr/lib/qt6/libexec/moc|/usr/lib/qt5/bin/moc|moc-qt5|moc)(?=\$\(MOCINCPATH\))@\$(SILENT) $ENV{QT_MOC}@g' "${QTMAKE}/qtdbg_sdl.make"
@@ -101,6 +111,29 @@ rewrite_qt_makefiles() {
   if ! rg -n -e "${QT_PATTERN}" "${QTMAKE}/mame.make" >/dev/null
   then
     echo "ERROR: Failed to inject the expected Qt${QT_MAJOR} link libraries into mame.make"
+    exit 1
+  fi
+
+  if ! rg -n --fixed-strings "${GCCBIN}" "${QTMAKE}" >/dev/null
+  then
+    echo "ERROR: Failed to inject the expected cross-compiler path into generated makefiles"
+    exit 1
+  fi
+}
+
+verify_target_binary() {
+  MAME_BIN="${DIR_BUILD}/src/${MAMEFORK}/mame"
+
+  if [ ! -f "${MAME_BIN}" ]; then
+    echo "ERROR: Expected target binary was not produced: ${MAME_BIN}"
+    exit 1
+  fi
+
+  BININFO=$(file "${MAME_BIN}")
+  echo "Built target binary: ${BININFO}"
+
+  if ! echo "${BININFO}" | grep -qi 'aarch64'; then
+    echo "ERROR: Build completed but produced a non-arm64 binary"
     exit 1
   fi
 }
@@ -204,6 +237,7 @@ make clean
     CROSS_BUILD=1 \
     TOOLS=1 \
     NOWERROR=1 \
+    CONFIG=release \
     SOURCES=trs/coco12.cpp,trs/coco3.cpp,trs/dragon.cpp,trs/mc10.cpp,atari/atari400.cpp,ti/ti99_4x.cpp,nintendo/dkong.cpp,commodore/c64.cpp,commodore/c128.cpp,msx/msx.cpp,sinclair/spectrum.cpp,trs/trs80.cpp,trs/trs80dt1.cpp,trs/trs80m2.cpp,trs/trs80m3.cpp,coleco/adam.cpp,coleco/coleco.cpp,apple/apple1.cpp,apple/apple2.cpp,apple/apple2e.cpp,apple/apple2gs.cpp,apple/apple3.cpp,trs/agvision.cpp,misc/nabupc.cpp,sharp/x68k.cpp,mattel/aquarius.cpp,mattel/aquarius_v.cpp,heathzenith/h19.cpp,tektronix/tek405x.cpp \
     PLATFORM=${MAMEPLATFORM} \
     CFLAGS+=" -I ${MLIB}/usr/include" \
@@ -242,7 +276,9 @@ make clean
     TARGETOS=linux \
     OVERRIDE_CC="${GCCBIN}" \
     OVERRIDE_CXX="${GPPBIN}" \
+    OVERRIDE_LD="${LDBIN}" \
     OVERRIDE_AR="${ARBIN}" \
+    linux_x64 \
     -j${CPUS}
 
 MAKE_STATUS=$?
@@ -252,6 +288,7 @@ if [ $MAKE_STATUS -ne 0 ]; then
   echo "${DIR_BUILD}/log/${OPERATION}_${DSTR}.log"
   exit 1
 else
+  verify_target_binary
   echo "Compile successful"
   echo "Compressing to ${DIR_BUILD}/output/${OUTFILE}"
   source "${DIR_FUNC}/compress"

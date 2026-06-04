@@ -92,11 +92,19 @@ The Qt6 flow is designed around the two practical workflows used on this machine
 
 Internally, `functions/compile` now detects whether the target sysroot contains Qt5 or Qt6 and rewrites MAME's generated Qt makefiles to use the target sysroot libraries instead of host Qt library paths.
 
-This Qt6 path has been verified to complete a full `download` + `prepare` + `compile` run for MAME `0.288` on Debian 13 `x86_64`, producing:
+Just as important, this fork now validates the final MAME binary architecture instead of treating a completed compile as success by itself. The Qt6 path is only considered good if the produced `build/src/mame/mame` binary reports `aarch64`.
+
+Current Qt6 ARM work also forces the target-stage MAME build through MAME's `linux_x64` release path. That sounds odd for an ARM target, but in current upstream MAME it is the path that expands to the generated `release64` makefile configuration and avoids the misleading host-style `scripts/...` archive path that can otherwise produce `x86_64` false positives.
+
+The Qt6 path has been verified to complete `download` + `prepare` cleanly for Debian 13 `x86_64`, and the compile logic is now aligned with the repo's real ARM validation rules.
+
+Previous output from an earlier Qt6 attempt was:
 
 ```bash
 build/output/mame_0.288_debian_13_trixie_arm64_qt6.7z
 ```
+
+That archive should not be treated as authoritative unless the matching `build/src/mame/mame` binary has also been confirmed as `aarch64`.
 
 The wrapper script is intended to live both in this repo and as a convenience copy in `$HOME/source-other/`.
 
