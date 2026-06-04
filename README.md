@@ -40,7 +40,14 @@ The detailed transition plan and the currently known blockers are tracked in:
 REBUILD_PLAN.md
 ```
 
-Until that work is finished, treat the current Qt6 path as in-progress rather than final.
+Current status on branch `qt6-rebuild-v2`:
+
+- clean wrapper-driven Qt6 ARM64 `compile` has been proven with `--reuse`
+- the repo-local `.deb` packaging helper has been proven
+- the limited-driver `useroptions.mak` path is working again
+- the next remaining end-to-end proof is a full fresh rebuild that includes `download` + `prepare`
+
+So the Qt6 path is now working for clean scripted MAME builds and packaging, but the "rebuild everything from scratch" path is still the next validation target.
 
 ## Summary of Fixes
 
@@ -68,7 +75,7 @@ Until that work is finished, treat the current Qt6 path as in-progress rather th
 
 This fork includes a **unified build wrapper**:
 
-```
+```bash
 make-mame_raspberrypi_cross_compile-unified.sh
 ```
 
@@ -127,7 +134,27 @@ Just as important, this fork now validates the final MAME binary architecture in
 
 Current Qt6 ARM work also forces the target-stage MAME build through MAME's `linux_x64` release path. That sounds odd for an ARM target, but in current upstream MAME it is the path that expands to the generated `release64` makefile configuration and avoids the misleading host-style `scripts/...` archive path that can otherwise produce `x86_64` false positives.
 
-The Qt6 path did produce successful ARM64 builds during earlier work, but the current effort is focused on making that result reproducible from a truly clean rebuild without depending on hidden state or one-off fixes.
+The Qt6 path now has a proven clean scripted `compile` result when reusing an existing prepared ARM64 environment:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh --reuse --yes
+```
+
+That flow has been verified to:
+
+- remove the prior MAME source/build/output trees
+- clone a fresh MAME checkout
+- build a valid `aarch64` `mame`
+- build valid `aarch64` `chdman` and `castool`
+- create the `.7z` output archive
+
+The next Qt6 proof target is the heavier full-environment path:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh --fresh --yes
+```
+
+That is the run that exercises `download`, `prepare`, and `compile` together from a clean start.
 
 Earlier in the debugging process, a Qt6 compile also produced a misleading `x86_64` top-level result. The repo now treats that as a hard failure and validates the final `build/src/mame/mame` binary before calling the build successful.
 
@@ -170,6 +197,14 @@ Before creating the `.deb`, it checks that:
 When `--strip` is used, the helper strips only the copied ARM64 binaries inside the package staging tree. The original files in `build/src/mame` are left unchanged.
 
 This avoids packaging a host `x86_64` false-positive build.
+
+The packaging helper has now been proven on the Qt6 ARM64 limited-driver build and produces:
+
+```bash
+build/src/mame/mameCoCoPi-0.288-crosstool-NG-1.deb
+```
+
+For the current limited-driver CoCo-Pi build, `--strip` is optional rather than required. The limited driver set already keeps the package well below GitHub's `100 MB` file limit.
 
 ---
 
@@ -215,9 +250,28 @@ The script will:
 6. Validate the generated ARM64 binaries
 
 Packaging is handled separately with `create-MAME-package-crosstool-NG.sh`, optionally using `--strip` to produce a smaller release `.deb`.
-7. Validate the resulting binary  
 
 The target end state is that all steps are automated and reproducible. The rebuild work tracked in `REBUILD_PLAN.md` is specifically aimed at making that true for the Qt6 path from a clean start.
+
+To create the current `.deb` after a successful Qt6 build:
+
+```bash
+./create-MAME-package-crosstool-NG.sh /path/to/mame_raspberrypi_cross_compile
+```
+
+Optional stripped package:
+
+```bash
+./create-MAME-package-crosstool-NG.sh --strip /path/to/mame_raspberrypi_cross_compile
+```
+
+## Lessons Learned
+
+- A successful host-tool build is not enough; the repo now treats the build as successful only if `build/src/mame/mame` reports `aarch64`.
+- For the current upstream Qt6 Linux path, `USE_QTDEBUG=0` is the simplest first success target for Raspberry Pi runtime builds.
+- The ARM64 sysroot package list must include all final link dependencies, including `libbz2-1.0` and `libbz2-dev`.
+- The limited-driver list in `conf/useroptions.mak` materially reduces output size and makes stripped packaging optional rather than mandatory.
+- Packaging should stay separate from compile until the full fresh rebuild path is fully proven end-to-end.
 
 ---
 

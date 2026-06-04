@@ -223,31 +223,28 @@ Successful release libraries from the current runtime path:
 
 That means the recent blockers are no longer the earlier SDL / ALSA / X11 / GL header-path failures.
 
-## Current Stop Point
+## Proven Scripted Build State
 
-At the end of the latest runtime probe:
+The branch has now moved beyond manual resume-only validation.
 
-- no build processes were still running
-- no final `build/src/mame/mame` binary existed yet
-- the latest compiled top-level objects included:
-  - `build/src/mame/build/linux_gcc/obj/x64/Release/src/mame/mame.o`
-  - `build/src/mame/build/linux_gcc/obj/x64/Release/generated/mame/mame/drivlist.o`
-  - `build/src/mame/build/linux_gcc/obj/x64/Release/generated/version.o`
+Proven scripted results:
 
-Important note:
+- `./make-mame_raspberrypi_cross_compile-unified-qt6.sh --reuse --yes`
+  - removes prior `build/src/mame`, `build/output`, and `build/tmp`
+  - clones a fresh MAME checkout
+  - completes the ARM64 Qt6 runtime compile
+  - verifies `build/src/mame/mame` as `aarch64`
+  - creates `build/output/mame_0.288_debian_13_trixie_arm64_qt6.7z`
+- `./create-MAME-package-crosstool-NG.sh /path/to/mame_raspberrypi_cross_compile`
+  - packages the current ARM64 build successfully
+  - creates `build/src/mame/mameCoCoPi-0.288-crosstool-NG-1.deb`
 
-- the repo `build/log/compile_debian_13_trixie_arm64_qt6.log` does not fully capture the latest direct `make` probes performed inside `gmake-linux`
-- the most reliable next step is to resume the runtime target directly, not to infer too much from the older wrapper log
+Additional proven binaries from the current scripted compile path:
 
-## Exact Resume Command
+- `build/src/mame/chdman`
+- `build/src/mame/castool`
 
-If the next session wants the fastest path back to the current frontier, resume from:
-
-```bash
-make -C build/src/mame/build/projects/sdl/mame/gmake-linux config=release64 mame -j1
-```
-
-That should expose the next real blocker directly without restarting the full environment setup.
+Those now validate as `aarch64` as well.
 
 ## Latest Success State
 
@@ -293,7 +290,32 @@ build/src/mame/mameCoCoPi-0.288-crosstool-NG-1.deb
 Important nuance:
 
 - this success was proven by resuming the already-generated runtime build graph after updating the package baseline
-- a full from-clean wrapper-level end-to-end rerun still remains to be proven on this branch
+- that earlier gap has now been closed for the `--reuse` wrapper compile path
+- the remaining major proof is the full from-clean wrapper-level run that includes `download` + `prepare`
+
+## Current Next Step
+
+The next meaningful test is now:
+
+```bash
+./make-mame_raspberrypi_cross_compile-unified-qt6.sh --fresh --yes
+```
+
+That run is intended to prove the entire Qt6 ARM64 path from a clean start:
+
+- sysroot package download
+- cross-toolchain creation
+- clean MAME compile
+- post-build packaging
+
+Until that completes successfully, the branch should be considered proven for:
+
+- clean scripted compile with a prepared environment
+- separate package creation
+
+but not yet fully proven for:
+
+- rebuilding the entire ARM64 environment and toolchain from scratch
 
 ## Working Rule
 
