@@ -8,6 +8,7 @@ ASSUME_YES=0
 PROJECT_DIR=""
 SOURCE_DIR="${HOME}/source"
 DEBIAN_RELEASE=""
+MAME_USE_QTDEBUG="${MAME_USE_QTDEBUG:-0}"
 
 usage() {
     cat <<'EOF'
@@ -92,6 +93,7 @@ log_step "Qt6 Build Settings"
 echo "Mode: ${MODE}"
 echo "Debian release: ${DEBIAN_RELEASE}"
 echo "Environment name: ${ENV_NAME}"
+echo "Target Qt debugger: ${MAME_USE_QTDEBUG}"
 confirm
 
 log_step "Host Architecture Check"
@@ -286,6 +288,7 @@ log_step "Running Qt6 MAME Compile"
     export HOSTCC=gcc
     export HOSTCXX=g++
     export HOSTLD=ld
+    export MAME_USE_QTDEBUG
     ./mame-cross-compile.sh -o compile -r "${DEBIAN_RELEASE}" -a "${ARCH}"
 )
 

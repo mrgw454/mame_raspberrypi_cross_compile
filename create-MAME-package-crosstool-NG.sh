@@ -12,8 +12,8 @@ Usage:
   ./${scriptname} [--strip] <repo checkout>
 
 Example:
-  ./${scriptname} /home/ron/source/mame_raspberrypi_cross_compile
-  ./${scriptname} --strip /home/ron/source/mame_raspberrypi_cross_compile
+  ./${scriptname} /path/to/mame_raspberrypi_cross_compile
+  ./${scriptname} --strip /path/to/mame_raspberrypi_cross_compile
 
 Options:
   --strip     Strip packaged ARM64 binaries before building the .deb.

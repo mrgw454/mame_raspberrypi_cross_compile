@@ -22,6 +22,26 @@ Other distributions may work but are not currently supported.
 This repository is the supported place for local Raspberry Pi cross-build changes.
 The original upstream project should be treated as read-only for these fork-specific fixes.
 
+## Current Direction
+
+The repository is currently being reworked toward a simpler and fully reproducible Qt6 ARM64 build flow.
+
+The long-term goal is:
+
+- automatic environment creation
+- automatic cross-toolchain creation
+- automatic MAME build
+- automatic `.deb` packaging
+- no manual fixes between stages
+
+The detailed transition plan and the currently known blockers are tracked in:
+
+```bash
+REBUILD_PLAN.md
+```
+
+Until that work is finished, treat the current Qt6 path as in-progress rather than final.
+
 ## Summary of Fixes
 
 - **Corrected two‑stage build process**  
@@ -60,11 +80,16 @@ This script is the **single source of truth** for:
 - toolchain verification  
 - sysroot verification  
 - artifact cleanup  
-- MAME SOURCES selection  
+- compile orchestration using the repo-managed MAME source list
 - full compile and validation  
 
-The wrapper script **defines the SOURCES list** for the MAME build.  
-`functions/compile` no longer contains any hard‑coded SOURCES.
+The driver list used to prune the MAME build now lives in:
+
+```bash
+conf/useroptions.mak
+```
+
+During compile, `functions/compile` copies that file into the checked-out MAME source tree as `useroptions.mak` before invoking `make`. This keeps the limited CoCo-Pi driver set inside the repo instead of relying on an external file in `~/source`.
 
 ---
 
@@ -90,27 +115,21 @@ The Qt6 flow is designed around the two practical workflows used on this machine
 - rebuild everything from scratch for the Qt6 environment
 - reuse the existing Qt6 tool environment and only refresh/build MAME
 
-Internally, `functions/compile` now detects whether the target sysroot contains Qt5 or Qt6 and rewrites MAME's generated Qt makefiles to use the target sysroot libraries instead of host Qt library paths.
+On the `qt6-rebuild-v2` branch, the first success target is a reproducible Raspberry Pi runtime build with the Qt debugger disabled by default:
+
+```bash
+MAME_USE_QTDEBUG=0
+```
+
+Internally, the current Qt6 path still relies on generated-makefile rewriting to steer MAME toward the target sysroot and toolchain. That logic is one of the main areas being simplified in the rebuild plan.
 
 Just as important, this fork now validates the final MAME binary architecture instead of treating a completed compile as success by itself. The Qt6 path is only considered good if the produced `build/src/mame/mame` binary reports `aarch64`.
 
 Current Qt6 ARM work also forces the target-stage MAME build through MAME's `linux_x64` release path. That sounds odd for an ARM target, but in current upstream MAME it is the path that expands to the generated `release64` makefile configuration and avoids the misleading host-style `scripts/...` archive path that can otherwise produce `x86_64` false positives.
 
-The Qt6 path has now been verified end-to-end for current MAME `0.288` on Debian 13 `x86_64`:
+The Qt6 path did produce successful ARM64 builds during earlier work, but the current effort is focused on making that result reproducible from a truly clean rebuild without depending on hidden state or one-off fixes.
 
-- `download` completed
-- `prepare` completed
-- `compile` completed
-- `build/src/mame/mame` is confirmed `aarch64`
-- helper tools such as `chdman` and `castool` are also confirmed `aarch64`
-
-Confirmed output:
-
-```bash
-build/output/mame_0.288_debian_13_trixie_arm64_qt6.7z
-```
-
-Earlier in the debugging process, a Qt6 compile produced a misleading `x86_64` top-level result. The current repo logic now treats that as a hard failure and validates the final `build/src/mame/mame` binary before calling the build successful.
+Earlier in the debugging process, a Qt6 compile also produced a misleading `x86_64` top-level result. The repo now treats that as a hard failure and validates the final `build/src/mame/mame` binary before calling the build successful.
 
 The wrapper script is intended to live both in this repo and as a convenience copy in `$HOME/source-other/`.
 
@@ -121,19 +140,19 @@ The wrapper script is intended to live both in this repo and as a convenience co
 This repo now also includes a repo-local package helper. A convenience copy can also live in `$HOME/scripts/`:
 
 ```bash
-./create-MAME-package-crosstool-NG.sh /home/ron/source/mame_raspberrypi_cross_compile
+./create-MAME-package-crosstool-NG.sh /path/to/mame_raspberrypi_cross_compile
 ```
 
 To strip packaged ARM64 binaries before building the `.deb`:
 
 ```bash
-./create-MAME-package-crosstool-NG.sh --strip /home/ron/source/mame_raspberrypi_cross_compile
+./create-MAME-package-crosstool-NG.sh --strip /path/to/mame_raspberrypi_cross_compile
 ```
 
 If you keep the convenience copy in `$HOME/scripts/`, the same command becomes:
 
 ```bash
-$HOME/scripts/create-MAME-package-crosstool-NG.sh --strip /home/ron/source/mame_raspberrypi_cross_compile
+$HOME/scripts/create-MAME-package-crosstool-NG.sh --strip /path/to/mame_raspberrypi_cross_compile
 ```
 
 It packages the verified top-level build output from:
@@ -198,7 +217,7 @@ The script will:
 Packaging is handled separately with `create-MAME-package-crosstool-NG.sh`, optionally using `--strip` to produce a smaller release `.deb`.
 7. Validate the resulting binary  
 
-All steps are automated and reproducible.
+The target end state is that all steps are automated and reproducible. The rebuild work tracked in `REBUILD_PLAN.md` is specifically aimed at making that true for the Qt6 path from a clean start.
 
 ---
 

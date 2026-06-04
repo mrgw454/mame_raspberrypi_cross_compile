@@ -1,4 +1,6 @@
 apulse
+libbz2-1.0
+libbz2-dev
 libasound2-dev
 libasound2t64
 libasyncns0

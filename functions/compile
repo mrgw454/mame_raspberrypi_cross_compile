@@ -36,6 +36,7 @@ esac
 ## Set linker path
 MLIB="${DIR_LIB}/${DSTR}"
 QT_PKGCONFIG_DIRS="${MLIB}/usr/lib/${LINARCH}/pkgconfig:${MLIB}/usr/lib/pkgconfig:${MLIB}/usr/share/pkgconfig"
+USE_QTDEBUG_TARGET="${MAME_USE_QTDEBUG:-1}"
 
 resolve_qt_settings() {
   export PKG_CONFIG_SYSROOT_DIR="${MLIB}"
@@ -75,32 +76,78 @@ resolve_qt_settings() {
   fi
 }
 
-rewrite_qt_makefiles() {
+rewrite_generated_makefiles() {
   QTMAKE="${DIR_BUILD}/src/${MAMEFORK}/build/projects/sdl/mame/gmake-linux"
-  QT_PATTERN="Qt${QT_MAJOR}Core|Qt${QT_MAJOR}Gui|Qt${QT_MAJOR}Widgets"
   GENERATED_FILES=$(find "${QTMAKE}" -maxdepth 1 \( -name '*.make' -o -name 'Makefile' \) -print)
 
-  if [ -z "${GENERATED_FILES}" ] || [ ! -f "${QTMAKE}/qtdbg_sdl.make" ] || [ ! -f "${QTMAKE}/mame.make" ]
+  if [ -z "${GENERATED_FILES}" ] || [ ! -f "${QTMAKE}/Makefile" ] || [ ! -f "${QTMAKE}/mame.make" ]
   then
-    echo "ERROR: Expected generated Qt makefiles were not found in ${QTMAKE}"
+    echo "ERROR: Expected generated MAME makefiles were not found in ${QTMAKE}"
     exit 1
   fi
 
-  echo "Rewriting generated MAME makefiles for cross-toolchain and Qt${QT_MAJOR} from ${MLIB}"
+  echo "Rewriting generated MAME makefiles for cross-toolchain from ${MLIB}"
 
-  GCCBIN="${GCCBIN}" GPPBIN="${GPPBIN}" ARBIN="${ARBIN}" perl -0pi -e '
-    s@^CC  = gcc$@CC  = $ENV{GCCBIN}@mg;
-    s@^CXX = g\+\+$@CXX = $ENV{GPPBIN}@mg;
-    s@^AR  = ar$@AR  = $ENV{ARBIN}@mg;
+  SYSROOT_CFLAGS_SPACED=" -I${MLIB}/usr/include -I${MLIB}/usr/include/${LINARCH} -I${MLIB}/usr/include/SDL2"
+  SYSROOT_LDFLAGS_SPACED=" -L${MLIB}/usr/lib -L${MLIB}/usr/lib/${LINARCH} -L${MLIB}/usr/lib/${LINARCH}/pulseaudio -Wl,-rpath-link,${MLIB}/usr/lib -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH} -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}/pulseaudio"
+
+  GCCBIN="${GCCBIN}" GPPBIN="${GPPBIN}" ARBIN="${ARBIN}" \
+  SYSROOT_CFLAGS_SPACED="${SYSROOT_CFLAGS_SPACED}" \
+  SYSROOT_LDFLAGS_SPACED="${SYSROOT_LDFLAGS_SPACED}" \
+  perl -0pi -e '
+    s@^CC\s*=.*$@CC = $ENV{GCCBIN}@mg;
+    s@^CXX\s*=.*$@CXX = $ENV{GPPBIN}@mg;
+    s@^AR\s*=.*$@AR = $ENV{ARBIN}@mg;
     s@(?:^| )-m32(?= |$)@@mg;
     s@(?:^| )-m64(?= |$)@@mg;
+    s@^(\s*ALL_CPPFLAGS\s*\+=\s*\$\(CPPFLAGS\))@$1$ENV{SYSROOT_CFLAGS_SPACED}@mg;
+    s@^(\s*ALL_LDFLAGS\s*\+=\s*\$\(LDFLAGS\))@$1$ENV{SYSROOT_LDFLAGS_SPACED}@mg;
     s@[ ]{2,}@ @mg;
   ' ${GENERATED_FILES}
 
-  QT_CFLAGS="${QT_CFLAGS}" perl -0pi -e 's@ -I\$\(shell qmake(?:6)? -query QT_INSTALL_HEADERS\)@$ENV{QT_CFLAGS}@g' "${QTMAKE}/qtdbg_sdl.make"
+  if ! rg -n --fixed-strings "CC = ${GCCBIN}" "${QTMAKE}" >/dev/null
+  then
+    echo "ERROR: Failed to inject the expected cross-compiler path into generated makefiles"
+    exit 1
+  fi
+}
+
+rewrite_qtdebug_stub_makefiles() {
+  QTMAKE="${DIR_BUILD}/src/${MAMEFORK}/build/projects/sdl/mame/gmake-linux"
+
+  if [ ! -f "${QTMAKE}/qtdbg_sdl.make" ]
+  then
+    echo "ERROR: Missing generated Qt debugger makefile in ${QTMAKE}"
+    exit 1
+  fi
+
+  echo "Rewriting generated Qt debugger stub makefile for USE_QTDEBUG=0"
+
+  perl -0pi -e '
+    s@\s+-I\$\(shell qmake(?:6)? -query QT_INSTALL_HEADERS\)@@g;
+    s@[ ]{2,}@ @mg;
+  ' "${QTMAKE}/qtdbg_sdl.make"
+}
+
+rewrite_qtdebug_makefiles() {
+  QTMAKE="${DIR_BUILD}/src/${MAMEFORK}/build/projects/sdl/mame/gmake-linux"
+  QT_PATTERN="Qt${QT_MAJOR}Core|Qt${QT_MAJOR}Gui|Qt${QT_MAJOR}Widgets"
+
+  if [ ! -f "${QTMAKE}/qtdbg_sdl.make" ] || [ ! -f "${QTMAKE}/mame.make" ]
+  then
+    echo "ERROR: Expected generated Qt debugger makefiles were not found in ${QTMAKE}"
+    exit 1
+  fi
+
+  echo "Rewriting generated Qt debugger makefiles for Qt${QT_MAJOR} from ${MLIB}"
+
+  QT_CFLAGS_SPACED=" ${QT_CFLAGS}"
+  QT_LIBS_SPACED=" ${QT_LIBS}"
+
+  QT_CFLAGS_SPACED="${QT_CFLAGS_SPACED}" perl -0pi -e 's@\s+-I\$\(shell qmake(?:6)? -query QT_INSTALL_HEADERS\)@$ENV{QT_CFLAGS_SPACED}@g' "${QTMAKE}/qtdbg_sdl.make"
   QT_MOC="${QT_MOC}" perl -0pi -e 's@\$\((?:SILENT)\)\s+(?:/usr/lib/qt6/libexec/moc|/usr/lib/qt5/bin/moc|moc-qt5|moc)(?=\$\(MOCINCPATH\))@\$(SILENT) $ENV{QT_MOC}@g' "${QTMAKE}/qtdbg_sdl.make"
-  perl -0pi -e 's@ -L\$\(shell qmake(?:6)? -query QT_INSTALL_LIBS\)@@g' "${QTMAKE}/qtdbg_sdl.make" "${QTMAKE}/mame.make"
-  QT_LIBS="${QT_LIBS}" perl -0pi -e 's@ -lQt[56]Core -lQt[56]Gui -lQt[56]Widgets@ $ENV{QT_LIBS}@g' "${QTMAKE}/mame.make"
+  perl -0pi -e 's@\s+-L\$\(shell qmake(?:6)? -query QT_INSTALL_LIBS\)@@g' "${QTMAKE}/qtdbg_sdl.make" "${QTMAKE}/mame.make"
+  QT_LIBS_SPACED="${QT_LIBS_SPACED}" perl -0pi -e 's@\s+-lQt[56]Core\s+-lQt[56]Gui\s+-lQt[56]Widgets@$ENV{QT_LIBS_SPACED}@g' "${QTMAKE}/mame.make"
 
   if ! rg -n --fixed-strings "${QT_MOC}" "${QTMAKE}/qtdbg_sdl.make" >/dev/null
   then
@@ -113,12 +160,63 @@ rewrite_qt_makefiles() {
     echo "ERROR: Failed to inject the expected Qt${QT_MAJOR} link libraries into mame.make"
     exit 1
   fi
+}
 
-  if ! rg -n --fixed-strings "${GCCBIN}" "${QTMAKE}" >/dev/null
-  then
-    echo "ERROR: Failed to inject the expected cross-compiler path into generated makefiles"
+install_useroptions() {
+  USEROPTIONS_SOURCE="${DIR_BASE}/conf/useroptions.mak"
+  USEROPTIONS_TARGET="${DIR_BUILD}/src/${MAMEFORK}/useroptions.mak"
+
+  if [ ! -f "${USEROPTIONS_SOURCE}" ]; then
+    echo "ERROR: Missing useroptions template: ${USEROPTIONS_SOURCE}"
     exit 1
   fi
+
+  cp "${USEROPTIONS_SOURCE}" "${USEROPTIONS_TARGET}"
+  echo "Installed useroptions.mak from ${USEROPTIONS_SOURCE}"
+}
+
+ensure_sdl_config_header() {
+  SDL_CONFIG_DIR="${MLIB}/usr/include/SDL2"
+  SDL_REAL_SOURCE="${MLIB}/usr/include/${LINARCH}/SDL2/_real_SDL_config.h"
+  SDL_REAL_TARGET="${SDL_CONFIG_DIR}/_real_SDL_config.h"
+
+  if [ ! -f "${SDL_CONFIG_DIR}/SDL_config.h" ]; then
+    return
+  fi
+
+  if [ -f "${SDL_REAL_TARGET}" ]; then
+    return
+  fi
+
+  if [ ! -f "${SDL_REAL_SOURCE}" ]; then
+    echo "ERROR: Missing SDL compatibility header: ${SDL_REAL_SOURCE}"
+    exit 1
+  fi
+
+  cp "${SDL_REAL_SOURCE}" "${SDL_REAL_TARGET}"
+  echo "Installed SDL compatibility header: ${SDL_REAL_TARGET}"
+}
+
+ensure_bgfx_gl_headers() {
+  BGFX_KHRONOS_DIR="${DIR_BUILD}/src/${MAMEFORK}/3rdparty/bgfx/3rdparty/khronos"
+  GL_SOURCE_DIR="${MLIB}/usr/include/GL"
+  GL_TARGET_DIR="${BGFX_KHRONOS_DIR}/GL"
+
+  if [ ! -d "${BGFX_KHRONOS_DIR}" ]; then
+    return
+  fi
+
+  if [ -f "${GL_TARGET_DIR}/gl.h" ]; then
+    return
+  fi
+
+  if [ ! -d "${GL_SOURCE_DIR}" ]; then
+    echo "ERROR: Missing GL headers in sysroot: ${GL_SOURCE_DIR}"
+    exit 1
+  fi
+
+  cp -r "${GL_SOURCE_DIR}" "${GL_TARGET_DIR}"
+  echo "Installed BGFX GL headers: ${GL_TARGET_DIR}"
 }
 
 verify_target_binary() {
@@ -214,10 +312,17 @@ echo "gcc : ${GCCBIN}"
 echo "g++ : ${GPPBIN}"
 echo "ld  : ${LDBIN}"
 echo "ar  : ${ARBIN}"
+echo "Qt debugger enabled: ${USE_QTDEBUG_TARGET}"
 
-resolve_qt_settings
-echo "Qt  : Qt${QT_MAJOR} from ${MLIB}"
-echo "moc : ${QT_MOC}"
+if [ "${USE_QTDEBUG_TARGET}" = "1" ]; then
+  resolve_qt_settings
+  echo "Qt  : Qt${QT_MAJOR} from ${MLIB}"
+  echo "moc : ${QT_MOC}"
+fi
+
+install_useroptions
+ensure_sdl_config_header
+ensure_bgfx_gl_headers
 
 make clean
 
@@ -226,19 +331,26 @@ make clean
     REGENIE=1 \
     TOOLS=1 \
     NOWERROR=1 \
+    USE_QTDEBUG=${USE_QTDEBUG_TARGET} \
     PLATFORM=${MAMEPLATFORM} \
     TARGETOS=linux \
     -j${CPUS}
 
-  rewrite_qt_makefiles
+  rewrite_generated_makefiles
+
+  if [ "${USE_QTDEBUG_TARGET}" = "1" ]; then
+    rewrite_qtdebug_makefiles
+  else
+    rewrite_qtdebug_stub_makefiles
+  fi
 
   # 2) Build MAME for target with cross toolchain
   make \
     CROSS_BUILD=1 \
     TOOLS=1 \
     NOWERROR=1 \
+    USE_QTDEBUG=${USE_QTDEBUG_TARGET} \
     CONFIG=release \
-    SOURCES=trs/coco12.cpp,trs/coco3.cpp,trs/dragon.cpp,trs/mc10.cpp,atari/atari400.cpp,ti/ti99_4x.cpp,nintendo/dkong.cpp,commodore/c64.cpp,commodore/c128.cpp,msx/msx.cpp,sinclair/spectrum.cpp,trs/trs80.cpp,trs/trs80dt1.cpp,trs/trs80m2.cpp,trs/trs80m3.cpp,coleco/adam.cpp,coleco/coleco.cpp,apple/apple1.cpp,apple/apple2.cpp,apple/apple2e.cpp,apple/apple2gs.cpp,apple/apple3.cpp,trs/agvision.cpp,misc/nabupc.cpp,sharp/x68k.cpp,mattel/aquarius.cpp,mattel/aquarius_v.cpp,heathzenith/h19.cpp,tektronix/tek405x.cpp \
     PLATFORM=${MAMEPLATFORM} \
     CFLAGS+=" -I ${MLIB}/usr/include" \
     CFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
@@ -246,6 +358,12 @@ make clean
     CFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
     CFLAGS+=" -U_FORTIFY_SOURCE" \
     CFLAGS+=" ${CUSTOMCFLAGS}" \
+    CXXFLAGS+=" -I ${MLIB}/usr/include" \
+    CXXFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
+    CXXFLAGS+=" -L ${MLIB}/usr/lib" \
+    CXXFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
+    CXXFLAGS+=" -U_FORTIFY_SOURCE" \
+    CXXFLAGS+=" ${CUSTOMCFLAGS}" \
     CPPFLAGS+=" -I ${MLIB}/usr/include" \
     CPPFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
     CPPFLAGS+=" -L ${MLIB}/usr/lib" \
