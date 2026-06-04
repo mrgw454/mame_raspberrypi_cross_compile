@@ -291,31 +291,45 @@ Important nuance:
 
 - this success was proven by resuming the already-generated runtime build graph after updating the package baseline
 - that earlier gap has now been closed for the `--reuse` wrapper compile path
-- the remaining major proof is the full from-clean wrapper-level run that includes `download` + `prepare`
+- that later gap has now also been closed by a successful full `--fresh` wrapper-level run
 
-## Current Next Step
+## Full Fresh Validation
 
-The next meaningful test is now:
+The full from-scratch wrapper path has now been proven with:
 
 ```bash
 ./make-mame_raspberrypi_cross_compile-unified-qt6.sh --fresh --yes
 ```
 
-That run is intended to prove the entire Qt6 ARM64 path from a clean start:
+That successful run verified:
 
-- sysroot package download
-- cross-toolchain creation
-- clean MAME compile
-- post-build packaging
+- sysroot package download from scratch
+- cross-toolchain creation from scratch
+- clean MAME source checkout
+- clean ARM64 Qt6 runtime compile
+- output archive creation
+- final ARM64 validation of:
+  - `build/src/mame/mame`
+  - `build/src/mame/chdman`
+  - `build/src/mame/castool`
 
-Until that completes successfully, the branch should be considered proven for:
+The resulting `mame` binary has also been tested successfully on the Raspberry Pi 500 target.
 
-- clean scripted compile with a prepared environment
+At this point, the branch is proven for:
+
+- full environment rebuild
+- full toolchain rebuild
+- clean scripted compile
 - separate package creation
+- real target runtime validation
 
-but not yet fully proven for:
+## Current Next Step
 
-- rebuilding the entire ARM64 environment and toolchain from scratch
+The remaining project-management step is no longer technical validation. It is branch promotion:
+
+- decide whether `main` or `master` should become the primary branch
+- promote `qt6-rebuild-v2` to that primary branch once you are ready
+- optionally fold packaging into the wrapper if you want one-command `download` + `prepare` + `compile` + `package`
 
 ## Working Rule
 

@@ -43,11 +43,17 @@ REBUILD_PLAN.md
 Current status on branch `qt6-rebuild-v2`:
 
 - clean wrapper-driven Qt6 ARM64 `compile` has been proven with `--reuse`
+- full wrapper-driven Qt6 ARM64 `--fresh` rebuild has now been proven end-to-end
 - the repo-local `.deb` packaging helper has been proven
 - the limited-driver `useroptions.mak` path is working again
-- the next remaining end-to-end proof is a full fresh rebuild that includes `download` + `prepare`
+- the resulting `mame` binary has been tested successfully on a Raspberry Pi 500
 
-So the Qt6 path is now working for clean scripted MAME builds and packaging, but the "rebuild everything from scratch" path is still the next validation target.
+So the Qt6 path is now working for:
+
+- full from-scratch environment/toolchain rebuild
+- clean scripted MAME builds
+- package creation
+- real Pi runtime validation
 
 ## Summary of Fixes
 
@@ -148,13 +154,21 @@ That flow has been verified to:
 - build valid `aarch64` `chdman` and `castool`
 - create the `.7z` output archive
 
-The next Qt6 proof target is the heavier full-environment path:
+The heavier full-environment path has now also been proven:
 
 ```bash
 ./make-mame_raspberrypi_cross_compile-unified-qt6.sh --fresh --yes
 ```
 
-That is the run that exercises `download`, `prepare`, and `compile` together from a clean start.
+That run has now been verified to:
+
+- rebuild the ARM64 sysroot from package download
+- rebuild the ARM64 cross-toolchain from scratch
+- clone and rebuild MAME from a clean tree
+- validate the resulting `aarch64` binaries
+- create the `.7z` output archive
+
+The resulting MAME runtime binary has also been tested successfully on a Raspberry Pi 500.
 
 Earlier in the debugging process, a Qt6 compile also produced a misleading `x86_64` top-level result. The repo now treats that as a hard failure and validates the final `build/src/mame/mame` binary before calling the build successful.
 
@@ -206,6 +220,8 @@ build/src/mame/mameCoCoPi-0.288-crosstool-NG-1.deb
 
 For the current limited-driver CoCo-Pi build, `--strip` is optional rather than required. The limited driver set already keeps the package well below GitHub's `100 MB` file limit.
 
+The package output from this path has also been exercised on the target Pi hardware via the successfully tested ARM64 `mame` runtime.
+
 ---
 
 # Usage
@@ -253,6 +269,14 @@ Packaging is handled separately with `create-MAME-package-crosstool-NG.sh`, opti
 
 The target end state is that all steps are automated and reproducible. The rebuild work tracked in `REBUILD_PLAN.md` is specifically aimed at making that true for the Qt6 path from a clean start.
 
+That target has now been reached on `qt6-rebuild-v2` for the Qt6 Raspberry Pi runtime path:
+
+- `download` works
+- `prepare` works
+- `compile` works
+- package creation works
+- the resulting ARM64 `mame` runs on the Pi 500
+
 To create the current `.deb` after a successful Qt6 build:
 
 ```bash
@@ -272,6 +296,7 @@ Optional stripped package:
 - The ARM64 sysroot package list must include all final link dependencies, including `libbz2-1.0` and `libbz2-dev`.
 - The limited-driver list in `conf/useroptions.mak` materially reduces output size and makes stripped packaging optional rather than mandatory.
 - Packaging should stay separate from compile until the full fresh rebuild path is fully proven end-to-end.
+- Full fresh rebuild validation matters; proving `--fresh` closed the final trust gap for using this repo on a brand-new PC with the documented host prerequisites.
 
 ---
 
