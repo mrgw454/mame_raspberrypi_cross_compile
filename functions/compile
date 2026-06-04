@@ -58,19 +58,8 @@ resolve_qt_settings() {
       echo "ERROR: Qt6 was found in ${MLIB}, but no host Qt6 moc was found"
       exit 1
     fi
-  elif pkg-config --exists Qt5Core Qt5Gui Qt5Widgets
-  then
-    QT_MAJOR=5
-    QT_CFLAGS=$(pkg-config --cflags Qt5Core Qt5Gui Qt5Widgets)
-    QT_LIBS=$(pkg-config --libs Qt5Core Qt5Gui Qt5Widgets)
-    QT_MOC=$(command -v moc)
-    if [ -z "${QT_MOC}" ]
-    then
-      echo "ERROR: Qt5 was found in ${MLIB}, but no host moc was found"
-      exit 1
-    fi
   else
-    echo "ERROR: No supported Qt development package set was found in ${MLIB}"
+    echo "ERROR: Qt6 development packages were not found in ${MLIB}"
     echo "Checked pkg-config paths: ${QT_PKGCONFIG_DIRS}"
     exit 1
   fi
@@ -145,7 +134,7 @@ rewrite_qtdebug_makefiles() {
   QT_LIBS_SPACED=" ${QT_LIBS}"
 
   QT_CFLAGS_SPACED="${QT_CFLAGS_SPACED}" perl -0pi -e 's@\s+-I\$\(shell qmake(?:6)? -query QT_INSTALL_HEADERS\)@$ENV{QT_CFLAGS_SPACED}@g' "${QTMAKE}/qtdbg_sdl.make"
-  QT_MOC="${QT_MOC}" perl -0pi -e 's@\$\((?:SILENT)\)\s+(?:/usr/lib/qt6/libexec/moc|/usr/lib/qt5/bin/moc|moc-qt5|moc)(?=\$\(MOCINCPATH\))@\$(SILENT) $ENV{QT_MOC}@g' "${QTMAKE}/qtdbg_sdl.make"
+  QT_MOC="${QT_MOC}" perl -0pi -e 's@\$\((?:SILENT)\)\s+(?:/usr/lib/qt6/libexec/moc|moc)(?=\$\(MOCINCPATH\))@\$(SILENT) $ENV{QT_MOC}@g' "${QTMAKE}/qtdbg_sdl.make"
   perl -0pi -e 's@\s+-L\$\(shell qmake(?:6)? -query QT_INSTALL_LIBS\)@@g' "${QTMAKE}/qtdbg_sdl.make" "${QTMAKE}/mame.make"
   QT_LIBS_SPACED="${QT_LIBS_SPACED}" perl -0pi -e 's@\s+-lQt[56]Core\s+-lQt[56]Gui\s+-lQt[56]Widgets@$ENV{QT_LIBS_SPACED}@g' "${QTMAKE}/mame.make"
 

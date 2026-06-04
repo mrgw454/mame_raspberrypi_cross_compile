@@ -40,7 +40,7 @@ The detailed transition plan and the currently known blockers are tracked in:
 REBUILD_PLAN.md
 ```
 
-Current status on branch `qt6-rebuild-v2`:
+Current status:
 
 - clean wrapper-driven Qt6 ARM64 `compile` has been proven with `--reuse`
 - full wrapper-driven Qt6 ARM64 `--fresh` rebuild has now been proven end-to-end
@@ -77,39 +77,9 @@ So the Qt6 path is now working for:
 
 ---
 
-# Unified Wrapper Script
+# Supported Wrapper
 
-This fork includes a **unified build wrapper**:
-
-```bash
-make-mame_raspberrypi_cross_compile-unified.sh
-```
-
-This script is the **single source of truth** for:
-
-- pyenv setup  
-- Python version enforcement (3.11.2)  
-- environment cleanup  
-- toolchain verification  
-- sysroot verification  
-- artifact cleanup  
-- compile orchestration using the repo-managed MAME source list
-- full compile and validation  
-
-The driver list used to prune the MAME build now lives in:
-
-```bash
-conf/useroptions.mak
-```
-
-During compile, `functions/compile` copies that file into the checked-out MAME source tree as `useroptions.mak` before invoking `make`. This keeps the limited CoCo-Pi driver set inside the repo instead of relying on an external file in `~/source`.
-
----
-
-# Qt6 Wrapper Script
-
-Current upstream MAME expects a Qt6-based Linux debugger build path.
-To keep the existing Qt5-oriented environment intact while supporting new MAME builds for Raspberry Pi, this fork now includes a parallel Qt6 wrapper:
+Current upstream MAME expects a Qt6-based Linux build path. This repository now supports one primary wrapper:
 
 ```bash
 make-mame_raspberrypi_cross_compile-unified-qt6.sh
@@ -121,14 +91,14 @@ This wrapper uses a separate environment name:
 debian_13_trixie_arm64_qt6
 ```
 
-That environment keeps the Qt6 sysroot, toolchain outputs, and logs isolated from the older default path.
+That environment keeps the Qt6 sysroot, toolchain outputs, and logs isolated under the repo's `build/` tree.
 
 The Qt6 flow is designed around the two practical workflows used on this machine:
 
 - rebuild everything from scratch for the Qt6 environment
 - reuse the existing Qt6 tool environment and only refresh/build MAME
 
-On the `qt6-rebuild-v2` branch, the first success target is a reproducible Raspberry Pi runtime build with the Qt debugger disabled by default:
+The supported Raspberry Pi runtime build disables the Qt debugger by default:
 
 ```bash
 MAME_USE_QTDEBUG=0
@@ -173,6 +143,14 @@ The resulting MAME runtime binary has also been tested successfully on a Raspber
 Earlier in the debugging process, a Qt6 compile also produced a misleading `x86_64` top-level result. The repo now treats that as a hard failure and validates the final `build/src/mame/mame` binary before calling the build successful.
 
 The wrapper script is intended to live both in this repo and as a convenience copy in `$HOME/source-other/`.
+
+The driver list used to prune the MAME build lives in:
+
+```bash
+conf/useroptions.mak
+```
+
+During compile, `functions/compile` copies that file into the checked-out MAME source tree as `useroptions.mak` before invoking `make`. This keeps the limited CoCo-Pi driver set inside the repo instead of relying on an external file in `~/source`.
 
 ---
 
@@ -226,13 +204,7 @@ The package output from this path has also been exercised on the target Pi hardw
 
 # Usage
 
-To perform a full build on a clean system:
-
-```bash
-./make-mame_raspberrypi_cross_compile-unified.sh
-```
-
-To build with the new Qt6 path in automatic mode:
+To build with the supported Qt6 path in automatic mode:
 
 ```bash
 ./make-mame_raspberrypi_cross_compile-unified-qt6.sh
@@ -269,7 +241,7 @@ Packaging is handled separately with `create-MAME-package-crosstool-NG.sh`, opti
 
 The target end state is that all steps are automated and reproducible. The rebuild work tracked in `REBUILD_PLAN.md` is specifically aimed at making that true for the Qt6 path from a clean start.
 
-That target has now been reached on `qt6-rebuild-v2` for the Qt6 Raspberry Pi runtime path:
+That target has now been reached for the Qt6 Raspberry Pi runtime path:
 
 - `download` works
 - `prepare` works

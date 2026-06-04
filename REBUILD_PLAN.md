@@ -189,7 +189,7 @@ Additional note:
 - no committed repo scripts currently hardcode `/home/ron/...`
 - the personal path showed up in generated MAME makefiles from the local checkout location, which is a build artifact concern rather than a committed-script concern
 
-Latest compile-script progress on `qt6-rebuild-v2`:
+Latest compile-script progress:
 
 - the generated-makefile handling has been split into:
   - an always-on cross-toolchain/sysroot rewrite for runtime builds
@@ -248,7 +248,7 @@ Those now validate as `aarch64` as well.
 
 ## Latest Success State
 
-The most recent direct runtime probe on `qt6-rebuild-v2` progressed all the way to the final link and then failed only because the Qt6 ARM64 sysroot baseline was missing bzip2.
+The most recent direct runtime probe progressed all the way to the final link and then failed only because the Qt6 ARM64 sysroot baseline was missing bzip2.
 
 That gap has now been fixed in automation:
 
@@ -327,8 +327,7 @@ At this point, the branch is proven for:
 
 The remaining project-management step is no longer technical validation. It is branch promotion:
 
-- decide whether `main` or `master` should become the primary branch
-- promote `qt6-rebuild-v2` to that primary branch once you are ready
+- keep `main` as the single primary branch
 - optionally fold packaging into the wrapper if you want one-command `download` + `prepare` + `compile` + `package`
 
 ## Working Rule
