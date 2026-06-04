@@ -118,10 +118,22 @@ The wrapper script is intended to live both in this repo and as a convenience co
 
 # Packaging Script
 
-This repo now also includes a repo-local package helper:
+This repo now also includes a repo-local package helper. A convenience copy can also live in `$HOME/scripts/`:
 
 ```bash
 ./create-MAME-package-crosstool-NG.sh /home/ron/source/mame_raspberrypi_cross_compile
+```
+
+To strip packaged ARM64 binaries before building the `.deb`:
+
+```bash
+./create-MAME-package-crosstool-NG.sh --strip /home/ron/source/mame_raspberrypi_cross_compile
+```
+
+If you keep the convenience copy in `$HOME/scripts/`, the same command becomes:
+
+```bash
+$HOME/scripts/create-MAME-package-crosstool-NG.sh --strip /home/ron/source/mame_raspberrypi_cross_compile
 ```
 
 It packages the verified top-level build output from:
@@ -135,6 +147,8 @@ Before creating the `.deb`, it checks that:
 - `build/src/mame/mame` exists
 - `build/src/mame/mame` reports `aarch64`
 - non-ARM ELF files at the top level, such as a host-side `mamed`, are skipped automatically
+
+When `--strip` is used, the helper strips only the copied ARM64 binaries inside the package staging tree. The original files in `build/src/mame` are left unchanged.
 
 This avoids packaging a host `x86_64` false-positive build.
 
@@ -179,7 +193,9 @@ The script will:
 3. Reuse or rebuild the Qt6 toolchain and sysroot as requested
 4. Build host tools  
 5. Build MAME for ARM64  
-6. Package the output  
+6. Validate the generated ARM64 binaries
+
+Packaging is handled separately with `create-MAME-package-crosstool-NG.sh`, optionally using `--strip` to produce a smaller release `.deb`.
 7. Validate the resulting binary  
 
 All steps are automated and reproducible.

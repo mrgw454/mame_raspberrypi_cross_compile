@@ -3,22 +3,50 @@ set -euo pipefail
 
 scriptname=$(basename "$0")
 project_root=$(pwd)
-repo_arg="${1:-}"
+repo_arg=""
+strip_binaries=0
 
 usage() {
     cat <<EOF
 Usage:
-  ./${scriptname} <repo checkout>
+  ./${scriptname} [--strip] <repo checkout>
 
 Example:
   ./${scriptname} /home/ron/source/mame_raspberrypi_cross_compile
+  ./${scriptname} --strip /home/ron/source/mame_raspberrypi_cross_compile
+
+Options:
+  --strip     Strip packaged ARM64 binaries before building the .deb.
+              This only affects the package staging copy, not the original
+              build outputs in the repo checkout.
 EOF
 }
 
-if [[ "${repo_arg}" =~ ^--h|--help|-h$ ]]; then
-    usage
-    exit 0
-fi
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --strip)
+            strip_binaries=1
+            ;;
+        -h|--help|--h)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+        *)
+            if [ -n "${repo_arg}" ]; then
+                echo "ERROR: Multiple repo checkouts provided."
+                usage
+                exit 1
+            fi
+            repo_arg="$1"
+            ;;
+    esac
+    shift
+done
 
 if [ -z "${repo_arg}" ]; then
     echo "No repo checkout provided."
@@ -28,6 +56,11 @@ fi
 
 repo_dir=$(realpath "${repo_arg}")
 mamefolder="${repo_dir}/build/src/mame"
+strip_tool=""
+
+find_strip_tool() {
+    find "${repo_dir}/build/x-tools" -type f -path '*/bin/*-strip' | sort | head -n 1
+}
 
 if [ ! -d "${mamefolder}" ]; then
     echo "ERROR: MAME build folder does not exist: ${mamefolder}"
@@ -63,6 +96,16 @@ pkg_folder="mameCoCoPi-0.${mamever}-crosstool-NG-1"
 systemtype="arm64"
 
 echo "Packaging version 0.${mamever} for ${systemtype}"
+if [ "${strip_binaries}" -eq 1 ]; then
+    strip_tool=$(find_strip_tool)
+    if [ -z "${strip_tool}" ]; then
+        echo "ERROR: --strip was requested, but no cross strip tool was found under ${repo_dir}/build/x-tools"
+        exit 1
+    fi
+    echo "Package staging binaries will be stripped with: ${strip_tool}"
+else
+    echo "Package staging binaries will not be stripped."
+fi
 
 rm -f "${pkg_folder}.deb"
 rm -rf "${pkg_folder}"
@@ -112,6 +155,16 @@ done < <(find "${mamefolder}" -maxdepth 1 -type f)
 rm -f "${mamefolder}/${pkg_folder}/opt/mame-0.${mamever}/useroptions.mak"
 rm -f "${mamefolder}/${pkg_folder}/opt/mame-0.${mamever}/dist.mak"
 rm -f "${mamefolder}/${pkg_folder}/opt/mame-0.${mamever}/makefile"
+
+if [ "${strip_binaries}" -eq 1 ]; then
+    while IFS= read -r staged_file; do
+        file_info=$(file -b "${staged_file}")
+        if echo "${file_info}" | grep -q "ELF" && echo "${file_info}" | grep -qi "aarch64"; then
+            echo "Stripping $(basename "${staged_file}")"
+            "${strip_tool}" "${staged_file}"
+        fi
+    done < <(find "${mamefolder}/${pkg_folder}/opt/mame-0.${mamever}" -maxdepth 1 -type f)
+fi
 
 dpkg-deb --build "${mamefolder}/${pkg_folder}"
 
