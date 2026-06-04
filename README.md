@@ -96,17 +96,47 @@ Just as important, this fork now validates the final MAME binary architecture in
 
 Current Qt6 ARM work also forces the target-stage MAME build through MAME's `linux_x64` release path. That sounds odd for an ARM target, but in current upstream MAME it is the path that expands to the generated `release64` makefile configuration and avoids the misleading host-style `scripts/...` archive path that can otherwise produce `x86_64` false positives.
 
-The Qt6 path has been verified to complete `download` + `prepare` cleanly for Debian 13 `x86_64`, and the compile logic is now aligned with the repo's real ARM validation rules.
+The Qt6 path has now been verified end-to-end for current MAME `0.288` on Debian 13 `x86_64`:
 
-Previous output from an earlier Qt6 attempt was:
+- `download` completed
+- `prepare` completed
+- `compile` completed
+- `build/src/mame/mame` is confirmed `aarch64`
+- helper tools such as `chdman` and `castool` are also confirmed `aarch64`
+
+Confirmed output:
 
 ```bash
 build/output/mame_0.288_debian_13_trixie_arm64_qt6.7z
 ```
 
-That archive should not be treated as authoritative unless the matching `build/src/mame/mame` binary has also been confirmed as `aarch64`.
+Earlier in the debugging process, a Qt6 compile produced a misleading `x86_64` top-level result. The current repo logic now treats that as a hard failure and validates the final `build/src/mame/mame` binary before calling the build successful.
 
 The wrapper script is intended to live both in this repo and as a convenience copy in `$HOME/source-other/`.
+
+---
+
+# Packaging Script
+
+This repo now also includes a repo-local package helper:
+
+```bash
+./create-MAME-package-crosstool-NG.sh /home/ron/source/mame_raspberrypi_cross_compile
+```
+
+It packages the verified top-level build output from:
+
+```bash
+build/src/mame
+```
+
+Before creating the `.deb`, it checks that:
+
+- `build/src/mame/mame` exists
+- `build/src/mame/mame` reports `aarch64`
+- non-ARM ELF files at the top level, such as a host-side `mamed`, are skipped automatically
+
+This avoids packaging a host `x86_64` false-positive build.
 
 ---
 

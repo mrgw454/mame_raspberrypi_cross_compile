@@ -290,7 +290,7 @@ log_step "Running Qt6 MAME Compile"
 )
 
 log_step "Validating Build Output"
-MAME_BIN="${PROJECT_DIR}/build/src/mame/mamed"
+MAME_BIN="${PROJECT_DIR}/build/src/mame/mame"
 
 if [ ! -f "${MAME_BIN}" ]; then
     echo "ERROR: Expected MAME binary missing: ${MAME_BIN}"
@@ -305,6 +305,17 @@ if ! echo "${ARCH_INFO}" | grep -qi "aarch64"; then
 fi
 
 echo "MAME binary: ${MAME_BIN}"
+for tool in chdman castool; do
+    if [ -f "${PROJECT_DIR}/build/src/mame/${tool}" ]; then
+        TOOL_INFO=$(file "${PROJECT_DIR}/build/src/mame/${tool}")
+        echo "${tool}: ${TOOL_INFO}"
+        if ! echo "${TOOL_INFO}" | grep -qi "aarch64"; then
+            echo "ERROR: ${tool} is not ARM64."
+            exit 1
+        fi
+    fi
+done
+
 LATEST_ARCHIVE=$(find "${PROJECT_DIR}/build/output" -maxdepth 1 -type f -name "mame_*_${ENV_NAME}.7z" | sort | tail -n 1)
 if [ -n "${LATEST_ARCHIVE}" ]; then
     echo "Output archive: ${LATEST_ARCHIVE}"
