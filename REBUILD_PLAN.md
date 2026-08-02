@@ -315,6 +315,33 @@ That successful run verified:
 
 The resulting `mame` binary has also been tested successfully on the Raspberry Pi 500 target.
 
+## MAME 0.289 Compatibility Validation
+
+Verified 2026-08-02 on native Debian 13 x570:
+
+- upstream tag `mame0289` is selected automatically by the existing `latest`
+  version path
+- the previous two-stage shortcut invoked top-level `make` without a target;
+  on a clean 0.289 tree this began compiling before the generated makefiles
+  received the cross-toolchain rewrite, failing on target headers such as
+  `SDL2/SDL.h` and `X11/Xlib.h`
+- generated project files must be created before the ARM64 compiler/sysroot
+  rewrite and must not be regenerated afterward
+- the compile now requests MAME's `generate` target and the generated Linux
+  `Makefile` explicitly, then builds from that generated directory instead of
+  returning through the regenerating top-level `linux_x64` target
+- the generated `precompile` target must complete before the parallel project
+  build starts; without that ordering, parallel targets can fail because the
+  generated `emu.h` precompiled header is not present yet
+- `./make-mame_raspberrypi_cross_compile-unified-qt6.sh --reuse --yes`
+  completes successfully with those constraints encoded in `functions/compile`
+- `mame`, `chdman`, and `castool` all validate as ARM aarch64
+- the build creates
+  `build/output/mame_0.289_debian_13_trixie_arm64_qt6.7z`
+- the unstripped packaging path creates
+  `build/src/mame/mameCoCoPi-0.289-crosstool-NG-1.deb` with package version
+  `0.289-1` and architecture `arm64`
+
 At this point, the branch is proven for:
 
 - full environment rebuild

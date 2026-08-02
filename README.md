@@ -42,6 +42,8 @@ REBUILD_PLAN.md
 
 Current status:
 
+- MAME 0.289 is verified through the clean `--reuse` Qt6 ARM64 build and
+  unstripped `.deb` packaging paths as of 2026-08-02
 - clean wrapper-driven Qt6 ARM64 `compile` has been proven with `--reuse`
 - full wrapper-driven Qt6 ARM64 `--fresh` rebuild has now been proven end-to-end
 - the repo-local `.deb` packaging helper has been proven
@@ -193,7 +195,7 @@ This avoids packaging a host `x86_64` false-positive build.
 The packaging helper has now been proven on the Qt6 ARM64 limited-driver build and produces:
 
 ```bash
-build/src/mame/mameCoCoPi-0.288-crosstool-NG-1.deb
+build/src/mame/mameCoCoPi-0.289-crosstool-NG-1.deb
 ```
 
 For the current limited-driver CoCo-Pi build, `--strip` is optional rather than required. The limited driver set already keeps the package well below GitHub's `100 MB` file limit.

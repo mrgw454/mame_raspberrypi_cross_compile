@@ -315,7 +315,10 @@ ensure_bgfx_gl_headers
 
 make clean
 
-  # 1) Build host tools (genie) with host compiler
+  # 1) Build the host generator and generate target makefiles without starting
+  #    a compile.  Invoking make without an explicit target used to be a handy
+  #    shortcut here, but it also starts MAME's default build before the
+  #    generated makefiles have been rewritten for the cross toolchain.
   make \
     REGENIE=1 \
     TOOLS=1 \
@@ -323,6 +326,8 @@ make clean
     USE_QTDEBUG=${USE_QTDEBUG_TARGET} \
     PLATFORM=${MAMEPLATFORM} \
     TARGETOS=linux \
+    generate \
+    "build/projects/sdl/${MAMEFORK}/gmake-linux/Makefile" \
     -j${CPUS}
 
   rewrite_generated_makefiles
@@ -333,59 +338,26 @@ make clean
     rewrite_qtdebug_stub_makefiles
   fi
 
-  # 2) Build MAME for target with cross toolchain
-  make \
-    CROSS_BUILD=1 \
-    TOOLS=1 \
-    NOWERROR=1 \
-    USE_QTDEBUG=${USE_QTDEBUG_TARGET} \
-    CONFIG=release \
-    PLATFORM=${MAMEPLATFORM} \
-    CFLAGS+=" -I ${MLIB}/usr/include" \
-    CFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
-    CFLAGS+=" -L ${MLIB}/usr/lib" \
-    CFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
-    CFLAGS+=" -U_FORTIFY_SOURCE" \
-    CFLAGS+=" ${CUSTOMCFLAGS}" \
-    CXXFLAGS+=" -I ${MLIB}/usr/include" \
-    CXXFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
-    CXXFLAGS+=" -L ${MLIB}/usr/lib" \
-    CXXFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
-    CXXFLAGS+=" -U_FORTIFY_SOURCE" \
-    CXXFLAGS+=" ${CUSTOMCFLAGS}" \
-    CPPFLAGS+=" -I ${MLIB}/usr/include" \
-    CPPFLAGS+=" -I ${MLIB}/usr/include/${LINARCH}" \
-    CPPFLAGS+=" -L ${MLIB}/usr/lib" \
-    CPPFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
-    CPPFLAGS+=" -U_FORTIFY_SOURCE" \
-    CPPFLAGS+=" ${CUSTOMCFLAGS}" \
-    LDFLAGS+=" -L ${MLIB}/usr/lib" \
-    LDFLAGS+=" -L ${MLIB}/usr/lib/${LINARCH}" \
+  # 2) Build directly from the rewritten makefiles.  Returning through MAME's
+  #    top-level linux_x64 target can regenerate them and discard the injected
+  #    compiler, sysroot and Qt settings.  MAME's top-level target normally
+  #    serializes precompiled-header creation before the parallel project build,
+  #    so preserve that ordering explicitly here as well.
+  make -C "${QTMAKE}" \
+    config=release64 \
+    CFLAGS+=" -U_FORTIFY_SOURCE ${CUSTOMCFLAGS}" \
+    CXXFLAGS+=" -U_FORTIFY_SOURCE ${CUSTOMCFLAGS}" \
+    CPPFLAGS+=" -U_FORTIFY_SOURCE ${CUSTOMCFLAGS}" \
     LDFLAGS+=" ${CUSTOMLDFLAGS}" \
-    ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib" \
-    ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib/${LINARCH}" \
-    ARCHOPTS+=" -Wl,-R,${MLIB}/lib" \
-    ARCHOPTS+=" -Wl,-R,${MLIB}/lib/${LINARCH}" \
-    ARCHOPTS+=" -Wl,-R,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
-    ARCHOPTS+=" -Wl,-R,${MLIB}/opt/vc/lib" \
-    ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib" \
-    ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib/${LINARCH}" \
-    ARCHOPTS+=" -Wl,-rpath,${MLIB}/lib" \
-    ARCHOPTS+=" -Wl,-rpath,${MLIB}/lib/${LINARCH}" \
-    ARCHOPTS+=" -Wl,-rpath,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
-    ARCHOPTS+=" -Wl,-rpath,${MLIB}/opt/vc/lib" \
-    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib" \
-    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}" \
-    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/lib" \
-    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/lib/${LINARCH}" \
-    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/usr/lib/${LINARCH}/pulseaudio" \
-    ARCHOPTS+=" -Wl,-rpath-link,${MLIB}/opt/vc/lib" \
-    TARGETOS=linux \
-    OVERRIDE_CC="${GCCBIN}" \
-    OVERRIDE_CXX="${GPPBIN}" \
-    OVERRIDE_LD="${LDBIN}" \
-    OVERRIDE_AR="${ARBIN}" \
-    linux_x64 \
+    precompile \
+    -j${CPUS}
+
+  make -C "${QTMAKE}" \
+    config=release64 \
+    CFLAGS+=" -U_FORTIFY_SOURCE ${CUSTOMCFLAGS}" \
+    CXXFLAGS+=" -U_FORTIFY_SOURCE ${CUSTOMCFLAGS}" \
+    CPPFLAGS+=" -U_FORTIFY_SOURCE ${CUSTOMCFLAGS}" \
+    LDFLAGS+=" ${CUSTOMLDFLAGS}" \
     -j${CPUS}
 
 MAKE_STATUS=$?
